@@ -1,5 +1,8 @@
+#Dont forget to pip install pygame!
+
 import pygame
 from pygame.locals import *
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -8,7 +11,7 @@ pygame.init()
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 PLAYER_SCALE = 0.10  # Scale factor for the player
-FIRE_SPRITES_HEIGHT = 200  # Desired height for fire sprites
+FIRE_SPRITES_HEIGHT = 100  # Desired height for fire sprites, initialized value
 
 # Create the game window
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -52,6 +55,7 @@ fire_sprites = scale_sprites(fire_sprites, FIRE_SPRITES_HEIGHT)
 # Create player and fire obstacle
 player = pygame.Rect(400, 300, movement_sprites[0].get_width(), movement_sprites[0].get_height())
 fire_obstacle = pygame.Rect(200, 200, fire_sprites[0].get_width(), FIRE_SPRITES_HEIGHT)
+fire_size_ratio = fire_sprites[0].get_width() / FIRE_SPRITES_HEIGHT
 
 # Colors
 white = (255, 255, 255)
@@ -62,7 +66,7 @@ running = True
 sprite_index = 0  # To track current sprite in the sequence
 sprite_cycle_speed = 0.01  # Adjust this to control sprite cycling speed
 cycle_counter = 0  # Used to control sprite cycling
-fire_cycle_counter = 0 # Used to control fire sprite cycling
+fire_cycle_counter = 0  # Used to control fire sprite cycling
 fire_sprite_index = 0  # To cycle through fire sprites
 blue_squares = []  # List of blue squares to track projectiles
 
@@ -74,7 +78,7 @@ while running:
         # Shooting mechanism
         if event.type == KEYDOWN and event.key == K_SPACE:
             # Create a blue square projectile
-            blue_squares.append(pygame.Rect(player.x, player.y+75, 10, 10))
+            blue_squares.append(pygame.Rect(player.x, player.y + 75, 10, 10))
 
     # Player movement
     keys = pygame.key.get_pressed()
@@ -92,27 +96,20 @@ while running:
     player.x += dx
     player.y += dy
 
+
     # Update the sprite cycle
     cycle_counter += sprite_cycle_speed * max(abs(dx), abs(dy), abs(dx) + abs(dy))
     if cycle_counter >= 1:
         sprite_index = (sprite_index + 1) % len(movement_sprites)  # Loop through sprites
         cycle_counter = 0
 
-    # Check for collisions
-    if player.colliderect(fire_obstacle):
-        current_sprite = collision_sprites[sprite_index]  # Colliding sprite
-        cycle_counter += sprite_cycle_speed
-    else:
-        current_sprite = movement_sprites[sprite_index]  # Moving sprite
-
-    fire_cycle_counter += 0.01
+    fire_cycle_counter += 0.005
     if fire_cycle_counter >= 1:
         # Update fire obstacle cycle
-        fire_sprite_index = int(fire_sprite_index + 1) % len(fire_sprites)
+        fire_sprite_index = (fire_sprite_index + 1) % len(fire_sprites)
+        fire_obstacle.x += random.choice(range(-1, 2, 1))
+        fire_obstacle.y += random.choice(range(-1, 2, 1))
         fire_cycle_counter = 0
-    
-
-
 
     # Update blue squares
     to_remove = []
@@ -120,9 +117,23 @@ while running:
         square.x -= 1  # Move left
         if square.x < -1000:
             to_remove.append(square)  # Mark for removal after a total movement of 1000 units
+        elif square.colliderect(fire_obstacle):
+            # If the square collides with the fire obstacle, grow the obstacle
+            FIRE_SPRITES_HEIGHT += 10
+            fire_obstacle.height = FIRE_SPRITES_HEIGHT
+            fire_obstacle.width += 10*fire_size_ratio
+            fire_sprites = scale_sprites(fire_sprites, FIRE_SPRITES_HEIGHT)  # Rescale the fire sprites
+            to_remove.append(square)  # Remove the square after collision
 
     for square in to_remove:
         blue_squares.remove(square)  # Remove squares from list
+
+    # Check for collisions
+    if player.colliderect(fire_obstacle):
+        current_sprite = collision_sprites[sprite_index]  # Colliding sprite
+        cycle_counter += sprite_cycle_speed
+    else:
+        current_sprite = movement_sprites[sprite_index]  # Moving sprite
 
     # Draw everything
     screen.fill(white)  # Set the background to white
@@ -137,3 +148,4 @@ while running:
     pygame.display.update()
 
 pygame.quit()
+
